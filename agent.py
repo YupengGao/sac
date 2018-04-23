@@ -14,7 +14,12 @@ class Agent(object):
                  num_actions,
                  replay_buffer,
                  batch_size=4,
-                 gamma=0.9):
+                 gamma=0.9,
+                 tau=0.01,
+                 actor_lr=3*1e-3,
+                 critic_lr=3*1e-3,
+                 value_lr=3*1e-3,
+                 reg_factor=1e-3):
         self.batch_size = batch_size
         self.num_actions = num_actions
         self.gamma = gamma
@@ -34,7 +39,12 @@ class Agent(object):
             obs_dim=obs_dim,
             num_actions=num_actions,
             batch_size=batch_size,
-            gamma=gamma
+            gamma=gamma,
+            tau=tau,
+            actor_lr=actor_lr,
+            critic_lr=critic_lr,
+            value_lr=value_lr,
+            reg_factor=reg_factor
         )
 
     def act(self, obs, reward, training=True):
@@ -54,7 +64,7 @@ class Agent(object):
             value_error = self._train_value(obs_t, actions)
             critic_error = self._train_critic(
                 obs_t, actions, rewards, obs_tp1, dones)
-            actor_error = self._train_actor(obs_t)
+            actor_error = self._train_actor(obs_t, actions)
 
             # update target networks
             self._update_target()

@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.contrib.layers as layers
 import numpy as np
 
 
@@ -8,9 +9,13 @@ def build_graph(actor,
                 obs_dim,
                 num_actions,
                 batch_size,
-                gamma=0.99,
+                gamma,
+                tau,
+                actor_lr,
+                critic_lr,
+                value_lr,
+                reg_factor,
                 scope='ddpg',
-                tau=0.01,
                 reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
         # input placeholders
@@ -21,24 +26,25 @@ def build_graph(actor,
         done_mask_ph = tf.placeholder(tf.float32, [None], name='done')
 
         # actor network
-        policy_t, dist_t = actor(obs_t_input, obs_dim, num_actions, scope='actor')
+        policy_t, dist_t, regularizer = actor(
+            obs_t_input, num_actions, reg_factor=reg_factor, scope='actor')
         actor_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/actor'.format(scope))
 
         # critic network
-        q_t = critic(obs_t_input, act_t_ph, obs_dim, scope='critic')
+        q_t = critic(obs_t_input, act_t_ph, scope='critic')
         q_t_with_actor = critic(
-            obs_t_input, policy_t, obs_dim, scope='critic', reuse=True)
+            obs_t_input, policy_t, scope='critic', reuse=True)
         critic_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/critic'.format(scope))
 
         # value network
-        v_t = value(obs_t_input, obs_dim, scope='value')
+        v_t = value(obs_t_input, scope='value')
         value_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/value'.format(scope))
 
         # target value network
-        v_tp1 = value(obs_t_input, obs_dim, scope='target_value')
+        v_tp1 = value(obs_tp1_input, scope='target_value')
         target_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/target_value'.format(scope))
 
@@ -53,16 +59,21 @@ def build_graph(actor,
                 0.5 * tf.square(q_t - tf.stop_gradient(target)))
 
         with tf.variable_scope('policy_loss'):
-            actor_loss = -tf.reduce_mean(q_t_with_actor)
+            target = q_t - v_t
+            actor_loss = 0.5 * tf.reduce_mean(
+                tf.square(dist_t.log_prob(act_t_ph) - tf.stop_gradient(target)))
+            reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            l2_loss = layers.apply_regularization(regularizer, reg_variables)
+            actor_loss = actor_loss + l2_loss
 
         # optimize operations
-        critic_optimizer = tf.train.AdamOptimizer(3 * 1e-4)
+        critic_optimizer = tf.train.AdamOptimizer(critic_lr)
         critic_optimize_expr = critic_optimizer.minimize(
             critic_loss, var_list=critic_func_vars)
-        actor_optimizer = tf.train.AdamOptimizer(3 * 1e-4)
+        actor_optimizer = tf.train.AdamOptimizer(actor_lr)
         actor_optimize_expr = actor_optimizer.minimize(
             actor_loss, var_list=actor_func_vars)
-        value_optimizer = tf.train.AdamOptimizer(3 * 1e-4)
+        value_optimizer = tf.train.AdamOptimizer(value_lr)
         value_optimize_expr = value_optimizer.minimize(
             value_loss, var_list=value_func_vars)
 
@@ -83,18 +94,19 @@ def build_graph(actor,
             }
             return tf.get_default_session().run(policy_t, feed_dict=feed_dict)
 
-        def train_actor(obs):
+        def train_actor(obs, action):
             feed_dict = {
-                obs_t_input: obs
+                obs_t_input: obs,
+                act_t_ph: action
             }
             loss_val, _ = tf.get_default_session().run(
                 [actor_loss, actor_optimize_expr], feed_dict=feed_dict)
             return loss_val
 
-        def train_critic(obs_t, act, rew, obs_tp1, done):
+        def train_critic(obs_t, action, rew, obs_tp1, done):
             feed_dict = {
                 obs_t_input: obs_t,
-                act_t_ph: act,
+                act_t_ph: action,
                 rew_t_ph: rew,
                 obs_tp1_input: obs_tp1,
                 done_mask_ph: done
@@ -103,10 +115,10 @@ def build_graph(actor,
                 [critic_loss, critic_optimize_expr], feed_dict=feed_dict)
             return loss_val
 
-        def train_value(obs_t, act):
+        def train_value(obs_t, action):
             feed_dict = {
                 obs_t_input: obs_t,
-                act_t_ph: act
+                act_t_ph: action
             }
             loss_val, _ = tf.get_default_session().run(
                 [value_loss, value_optimize_expr], feed_dict=feed_dict)
