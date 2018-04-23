@@ -14,6 +14,7 @@ class Agent(object):
                  num_actions,
                  replay_buffer,
                  batch_size=4,
+                 action_scale=2.0,
                  gamma=0.9,
                  tau=0.01,
                  actor_lr=3*1e-3,
@@ -24,6 +25,7 @@ class Agent(object):
         self.num_actions = num_actions
         self.gamma = gamma
         self.obs_dim = obs_dim
+        self.action_scale = action_scale
         self.last_obs = None
         self.t = 0
         self.replay_buffer = replay_buffer
@@ -47,10 +49,14 @@ class Agent(object):
             reg_factor=reg_factor
         )
 
+        self.actor_errors = []
+        self.critic_errors = []
+        self.value_errors = []
+
     def act(self, obs, reward, training=True):
         obs = obs[0]
-        action = self._act([obs])
-        action = np.clip(action[0], -2, 2)
+        print(obs.shape)
+        action = np.clip(self._act([obs]), -1, 1)
 
         if training and self.t > 10 * 200:
             # sample experiences
@@ -65,6 +71,11 @@ class Agent(object):
             critic_error = self._train_critic(
                 obs_t, actions, rewards, obs_tp1, dones)
             actor_error = self._train_actor(obs_t, actions)
+
+            # store errors through episode
+            self.value_errors.append(value_error)
+            self.critic_errors.append(critic_error)
+            self.actor_errors.append(actor_error)
 
             # update target networks
             self._update_target()
@@ -81,7 +92,7 @@ class Agent(object):
         self.t += 1
         self.last_obs = obs
         self.last_action = action
-        return action
+        return action * self.action_scale
 
     def stop_episode(self, obs, reward, training=True):
         obs = obs[0]
@@ -93,5 +104,10 @@ class Agent(object):
                 obs_tp1=obs,
                 done=True
             )
+            print('actor error: {}, critic error: {}, value error: {}'.format(
+                sum(self.actor_errors), sum(self.critic_errors), sum(self.value_errors)))
         self.last_obs = None
         self.last_action = []
+        self.value_errors = []
+        self.critic_errors = []
+        self.actor_errors = []
