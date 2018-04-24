@@ -49,7 +49,7 @@ def build_graph(actor,
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/target_value'.format(scope))
 
         with tf.variable_scope('value_loss'):
-            target = q_t - dist_t.log_prob(policy_t)
+            target = q_t - dist_t.log_prob(act_t_ph)
             value_loss = tf.reduce_mean(
                 0.5 * tf.square(v_t - tf.stop_gradient(target)))
 
@@ -62,7 +62,7 @@ def build_graph(actor,
             target = q_t_with_actor - v_t
             log_pi = dist_t.log_prob(policy_t)
             actor_loss = 0.5 * tf.reduce_mean(
-                log_pi * tf.stop_gradient(log_pi - tf.stop_gradient(target)))
+                log_pi * tf.stop_gradient(log_pi - target))
             reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
             l2_loss = layers.apply_regularization(regularizer, reg_variables)
             actor_loss = actor_loss + l2_loss

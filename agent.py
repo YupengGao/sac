@@ -55,8 +55,7 @@ class Agent(object):
 
     def act(self, obs, reward, training=True):
         obs = obs[0]
-        print(obs.shape)
-        action = np.clip(self._act([obs]), -1, 1)
+        action = np.clip(self._act([obs])[0], -1, 1)
 
         if training and self.t > 10 * 200:
             # sample experiences

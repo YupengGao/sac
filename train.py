@@ -67,6 +67,7 @@ def main():
         n_actions,
         replay_buffer,
         batch_size=constants.BATCH_SIZE,
+        action_scale=env.action_space.high,
         gamma=constants.GAMMA,
         tau=constants.TAU,
         actor_lr=constants.ACTOR_LR,

@@ -6,7 +6,7 @@ ACTOR_LR = 3 * 1e-3
 CRITIC_LR = 3 * 1e-3
 VALUE_LR = 3 * 1e-3
 
-REG_FACTOR = 1e-4
+REG_FACTOR = 1e-3
 GAMMA = 0.99
 TAU = 1e-2
 BATCH_SIZE = 16
