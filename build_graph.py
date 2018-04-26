@@ -15,7 +15,7 @@ def build_graph(actor,
                 critic_lr,
                 value_lr,
                 reg_factor,
-                scope='ddpg',
+                scope='sac',
                 reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
         # input placeholders
