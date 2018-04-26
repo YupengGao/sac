@@ -26,7 +26,7 @@ def build_graph(actor,
         done_mask_ph = tf.placeholder(tf.float32, [None], name='done')
 
         # actor network
-        policy_t, dist_t, regularizer = actor(
+        policy_t, dist_t, log_pi_t, reg = actor(
             obs_t_input, num_actions, reg_factor=reg_factor, scope='actor')
         actor_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/actor'.format(scope))
@@ -49,7 +49,7 @@ def build_graph(actor,
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/target_value'.format(scope))
 
         with tf.variable_scope('value_loss'):
-            target = q_t - dist_t.log_prob(act_t_ph)
+            target = q_t - log_pi_t
             value_loss = tf.reduce_mean(
                 0.5 * tf.square(v_t - tf.stop_gradient(target)))
 
@@ -60,11 +60,10 @@ def build_graph(actor,
 
         with tf.variable_scope('policy_loss'):
             target = q_t_with_actor - v_t
-            log_pi = dist_t.log_prob(policy_t)
             actor_loss = 0.5 * tf.reduce_mean(
-                log_pi * tf.stop_gradient(log_pi - target))
+                log_pi_t * tf.stop_gradient(log_pi_t - target))
             reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-            l2_loss = layers.apply_regularization(regularizer, reg_variables)
+            l2_loss = layers.apply_regularization(reg, reg_variables)
             actor_loss = actor_loss + l2_loss
 
         # optimize operations

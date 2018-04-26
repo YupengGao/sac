@@ -24,17 +24,18 @@ def _make_actor_network(hiddens,
         # mean value of normal distribution
         mu = tf.layers.dense(
             out, num_actions, kernel_initializer=initializer, name='mu')
-        mu = tf.nn.tanh(mu)
 
         # variance of normal distribution
         sigma = tf.layers.dense(
             out, num_actions, kernel_initializer=initializer, name='sigma')
-        sigma = tf.nn.softplus(sigma)
 
         # sample actions from normal distribution
-        dist = tf.distributions.Normal(mu, sigma)
+        dist = tf.distributions.Normal(mu, tf.exp(sigma))
         out = tf.reshape(dist.sample(num_actions), [-1, num_actions])
-    return out, dist, regularizer
+        out = tf.stop_gradient(out)
+        action = tf.nn.tanh(out)
+        log_prob = dist.log_prob(out) - tf.log(1 - action ** 2 + 1e-6)
+    return action, dist, log_prob, regularizer
 
 def _make_critic_network(hiddens,
                          inpt,
@@ -43,16 +44,14 @@ def _make_critic_network(hiddens,
                          scope='critic',
                          reuse=None):
     with tf.variable_scope(scope, reuse=reuse):
-        out = inpt
+        # concat action
+        out = tf.concat([inpt, action], axis=1)
         for hidden in hiddens:
             out = tf.layers.dense(
                 out, hidden,
                 bias_initializer=tf.constant_initializer(0.0),
                 kernel_initializer=initializer)
             out = tf.nn.relu(out)
-
-        # concat action
-        out = tf.concat([out, action], axis=1)
 
         out = tf.layers.dense(out, 1, kernel_initializer=initializer)
     return out
