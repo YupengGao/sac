@@ -45,7 +45,7 @@ def main():
 
     env = EnvWrapper(
         env=gym.make(args.env),
-        r_preprocess=lambda r: r / 10.0
+        r_preprocess=lambda r: r * constants.REWARD_SCALE
     )
 
     obs_dim = env.observation_space.shape[0]
