@@ -26,7 +26,7 @@ def build_graph(actor,
         done_mask_ph = tf.placeholder(tf.float32, [None], name='done')
 
         # actor network
-        policy_t, dist_t, log_pi_t, reg = actor(
+        policy_t, greedy_policy_t, log_pi_t, reg = actor(
             obs_t_input, num_actions, reg_factor=reg_factor, scope='actor')
         actor_func_vars = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, '{}/actor'.format(scope))
@@ -92,7 +92,8 @@ def build_graph(actor,
             feed_dict = {
                 obs_t_input: obs
             }
-            return tf.get_default_session().run(policy_t, feed_dict=feed_dict)
+            return tf.get_default_session().run(
+                [policy_t, greedy_policy_t], feed_dict=feed_dict)
 
         def train_actor(obs, action):
             feed_dict = {

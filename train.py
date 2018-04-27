@@ -7,11 +7,11 @@ import copy
 import os
 import constants
 
-from lightsaber.rl.replay_buffer import ReplayBuffer
-from lightsaber.rl.trainer import Trainer
-from lightsaber.rl.env_wrapper import EnvWrapper
-from lightsaber.tensorflow.log import TfBoardLogger, JsonLogger
-from lightsaber.tensorflow.log import dump_constants, restore_constants
+from rlsaber.replay_buffer import ReplayBuffer
+from rlsaber.trainer import Trainer, Evaluator, Recorder
+from rlsaber.env import EnvWrapper
+from rlsaber.log import TfBoardLogger, JsonLogger
+from rlsaber.log import dump_constants, restore_constants
 from network import make_actor_network, make_critic_network, make_value_network
 from agent import Agent
 from datetime import datetime
@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--load-constants', type=str, default=None)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--record', action='store_true')
     args = parser.parse_args()
 
     outdir = os.path.join(os.path.dirname(__file__), 'results/{}'.format(args.log))
@@ -86,6 +87,7 @@ def main():
     train_writer = tf.summary.FileWriter(logdir, sess.graph)
     tflogger = TfBoardLogger(train_writer)
     tflogger.register('reward', dtype=tf.float32)
+    tflogger.register('eval_reward', dtype=tf.float32)
     # json logger
     jsonlogger = JsonLogger(os.path.join(outdir, 'reward.json'))
 
@@ -98,6 +100,17 @@ def main():
             path = os.path.join(outdir, 'model.ckpt')
             saver.save(sess, path, global_step=global_step)
 
+    evaluator = Evaluator(
+        env=copy.deepcopy(env),
+        state_shape=[obs_dim],
+        state_window=1,
+        eval_episodes=10,
+        recorder=Recorder(outdir) if args.record else None,
+        record_episodes=3
+    )
+    should_eval = lambda step, episode: step > 0 and step % 10000 == 0
+    end_eval = lambda s, e, r: tflogger.plot('eval_reward', np.mean(r), s)
+
     trainer = Trainer(
         env=env,
         agent=agent,
@@ -107,7 +120,10 @@ def main():
         final_step=constants.FINAL_STEP,
         end_episode=end_episode,
         after_action=after_action,
-        training=not args.demo
+        training=not args.demo,
+        evaluator=evaluator,
+        should_eval=should_eval,
+        end_eval=end_eval
     )
 
     trainer.start()

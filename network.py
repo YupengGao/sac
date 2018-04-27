@@ -24,6 +24,7 @@ def _make_actor_network(hiddens,
         # mean value of normal distribution
         mu = tf.layers.dense(
             out, num_actions, kernel_initializer=initializer, name='mu')
+        greedy_action = tf.nn.tanh(mu)
 
         # variance of normal distribution
         sigma = tf.layers.dense(
@@ -35,7 +36,7 @@ def _make_actor_network(hiddens,
         out = tf.stop_gradient(out)
         action = tf.nn.tanh(out)
         log_prob = dist.log_prob(out) - tf.log(1 - action ** 2 + 1e-6)
-    return action, dist, log_prob, regularizer
+    return action, greedy_action, log_prob, regularizer
 
 def _make_critic_network(hiddens,
                          inpt,

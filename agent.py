@@ -55,7 +55,12 @@ class Agent(object):
 
     def act(self, obs, reward, training=True):
         obs = obs[0]
-        action = np.clip(self._act([obs])[0], -1, 1)
+        action, greedy_action = np.clip(self._act([obs]), -1, 1)
+        action = action[0]
+        greedy_action = greedy_action[0]
+
+        if not training:
+            action = greedy_action
 
         if training and self.t > 10 * 200:
             # sample experiences

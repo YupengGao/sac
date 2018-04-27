@@ -10,17 +10,17 @@ https://arxiv.org/pdf/1801.01290.pdf
 - tensorflow
 - gym[atari]
 - opencv-python
-- git+https://github.com/imai-laboratory/lightsaber
+- git+https://github.com/imai-laboratory/rlsaber
 
 ## usage
 ### training
 ```
-$ python train.py [--render] --final-steps 10000000
+$ python train.py [--render]
 ```
 
 ### playing
 ```
-$ python train.py [--render] --load {path of models} --demo
+$ python train.py [--render] [--load {path of models}] --demo
 ```
 
 ### implementation
