@@ -32,7 +32,7 @@ def _make_actor_network(hiddens,
 
         # sample actions from normal distribution
         dist = tf.distributions.Normal(mu, tf.exp(sigma))
-        out = tf.reshape(dist.sample(num_actions), [-1, num_actions])
+        out = tf.reshape(dist.sample(1), [-1, num_actions])
         out = tf.stop_gradient(out)
         action = tf.nn.tanh(out)
         log_prob = dist.log_prob(out) - tf.log(1 - action ** 2 + 1e-6)

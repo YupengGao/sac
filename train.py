@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import argparse
 import cv2
-import gym
+import gym, roboschool
 import copy
 import os
 import constants
@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--record', action='store_true')
+    parser.add_argument('--seed', type=int, default=1)
     args = parser.parse_args()
 
     outdir = os.path.join(os.path.dirname(__file__), 'results/{}'.format(args.log))
@@ -44,16 +45,23 @@ def main():
         # this condition expression prevents python interpreter bug
         dump_constants(constants, os.path.join(outdir, 'constants.json'))
 
+    env_ = gym.make(args.env)
+
+    env_.seed(seed=args.seed)
+
     env = EnvWrapper(
-        env=gym.make(args.env),
+        env=env_,
         r_preprocess=lambda r: r * constants.REWARD_SCALE
     )
+
+    np.random.seed(seed=1)
 
     obs_dim = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
 
     sess = tf.Session()
     sess.__enter__()
+    tf.set_random_seed(seed=args.seed)
 
     actor = make_actor_network(constants.ACTOR_HIDDENS)
     critic = make_critic_network(constants.CRITIC_HIDDENS)
