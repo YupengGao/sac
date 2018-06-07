@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--demo', action='store_true')
     parser.add_argument('--record', action='store_true')
     parser.add_argument('--seed', type=int, default=1)
+    parser.add_argument('--reward_scale', type=float, default=0.1)
     args = parser.parse_args()
 
     outdir = os.path.join(os.path.dirname(__file__), 'results/{}'.format(args.log))
@@ -51,7 +52,7 @@ def main():
 
     env = EnvWrapper(
         env=env_,
-        r_preprocess=lambda r: r * constants.REWARD_SCALE
+        r_preprocess=lambda r: r * args.reward_scale
     )
 
     np.random.seed(seed=1)
